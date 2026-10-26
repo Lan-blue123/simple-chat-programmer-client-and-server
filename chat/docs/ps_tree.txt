@@ -1,0 +1,11 @@
+【实测进程树】3 个客户端在线时执行 ps -ef 的结果
+--------------------------------------------------------------
+     lan   16968       1 ?        11:01:07 /cygdrive/e/课程/操作系统/class2/chat/build/client
+     lan   17016       1 ?        11:01:07 /cygdrive/e/课程/操作系统/class2/chat/build/server
+     lan    7960       1 ?        11:01:08 /cygdrive/e/课程/操作系统/class2/chat/build/client
+     lan    8360   17016 ?        11:01:08 /cygdrive/e/课程/操作系统/class2/chat/build/server
+     lan    9072   17016 ?        11:01:08 /cygdrive/e/课程/操作系统/class2/chat/build/server
+     lan    8752   17016 ?        11:01:08 /cygdrive/e/课程/操作系统/class2/chat/build/server
+     lan   10120       1 ?        11:01:08 /cygdrive/e/课程/操作系统/class2/chat/build/client
+--------------------------------------------------------------
+三个子进程的 PPID 都等于主进程 PID。

@@ -1,0 +1,28 @@
+# ---- 构建产物 ----
+chat/build/
+*.o
+chat/scripts/__pycache__/
+__pycache__/
+
+# ---- 课程交付物（体积大，不进代码仓库）----
+多进程并发聊天程序_演示.pptx
+文化风PPT模板.pptx
+chat_deploy.tar.gz
+
+# ---- 含真实公网 IP 的截图，仅本地保留 ----
+chat/docs/dashboard_cloud.png
+chat/docs/dashboard_cloud_crop.png
+gui/screenshots/cloud_two_clients.png
+
+# ---- 运行/检查产生的临时文件 ----
+selftest_report.txt
+chat/docs/server_log.txt
+*.log
+.DS_Store
+Thumbs.db
+
+# ---- 压缩包与随手放的副本 ----
+*.rar
+*.zip
+deploy.txt
+/chat_gui.exe
