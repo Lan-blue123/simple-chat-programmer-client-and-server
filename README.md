@@ -3,7 +3,6 @@
 演示主题：**用 socket 实现一个相对复杂的聊天程序——1 个服务端 + 多个客户端，每来一个客户端，服务端就 `fork()` 一个子进程与之通信。**
 
 > 本仓库提交的是**代码与文档**：`chat/`（服务端 + 命令行客户端 + 实时看板）、`gui/`（Windows 图形客户端与源码）。
-> 演示文稿（21 MB）与 PPT 模板（47 MB）体积大且与代码无关，未上传。
 >
 > 最快上手：
 > ```sh
@@ -77,7 +76,7 @@ make                                  # 编译，生成 build/server 与 build/c
 
 > 关键一句：**服务端每接受一个连接就 fork 一个子进程**。演示时另开一个终端跑 `ps -ef | grep server`（Linux）或 `pstree -p <主进程pid>`，能直接看到主进程下面挂着 3 个子进程。
 
-### 更适合作课堂演示的两种方式
+
 
 **① 服务端开实时看板**（消息怎么流转、fork 了哪些子进程，全在屏幕上滚动）
 
@@ -113,8 +112,6 @@ make                        # 需要 gcc + make：sudo apt install -y build-esse
 ./build/server -p 8888 -d   # 带看板启动
 ```
 
-**别忘了在云服务器安全组里放行 8888/TCP**，否则外网客户端连不上（`ping` 通但端口不通就是这个问题）。
-客户端只要在 GUI 里把服务器填成 `119.23.182.147`、端口 `8888`、昵称随便填，点"连接"即可，最多 64 个客户端同时在线。
 
 如果不想手动开 4 个终端，直接跑一键脚本复现：
 
@@ -182,15 +179,11 @@ python3 scripts/smoke_test.py
 
 预期末尾输出 `测试结果：12/12 通过`。它会自己拉起服务端、用 socket 按帧格式对话、跑完 12 项断言后关闭服务端。
 
-### 4. 录制演示数据（可选，注意 pid）
-
-```sh
-python3 scripts/demo.py      # 覆盖 chat/docs/demo_transcript.txt 与 ps_tree.txt
 ```
 
 ⚠️ 重跑会生成**新的 pid**，而 PPT 第 5、16 页引用的是当前 `docs/` 里的数据。若要重跑，跑完执行 `python tools/build_deck.py` 重新生成 PPT，两处就又会一致。
 
-### 5. 证明"一个客户端一个进程"的 Linux 命令
+### 4. 证明"一个客户端一个进程"的 Linux 命令
 
 | 命令 | 看什么 |
 | --- | --- |
@@ -201,7 +194,7 @@ python3 scripts/demo.py      # 覆盖 chat/docs/demo_transcript.txt 与 ps_tree.
 | `ps -eo stat,pid,ppid,cmd \| grep '^Z'` | 无输出 = 没有僵尸进程（对比：把 `SIGCHLD` 处理删掉再试） |
 | `strace -f -e trace=clone,fork,vfork ./build/server` | 每次 `connect` 都能看到一次 `fork()` 系统调用（可选炫技） |
 
-### 6. 常见问题
+### 5. 常见问题
 
 | 现象 | 处理 |
 | --- | --- |
@@ -249,30 +242,7 @@ python3 scripts/demo.py      # 覆盖 chat/docs/demo_transcript.txt 与 ps_tree.
 
 ---
 
-## 五、可能被追问的问题（建议提前准备）
-
-1. **为什么用多进程而不是多线程？**
-   题目要求"每来一个客户端生成一个新进程"；另外进程隔离彻底，一个会话崩溃不影响其他人，也不用加锁。代价是共享状态必须走 IPC、创建开销更大。
-2. **进程之间怎么共享"谁在线"？**
-   不共享。用户表只放在主进程里，子进程通过 `socketpair` 把请求交给主进程，由主进程统一裁决和转发。
-3. **僵尸进程怎么处理？**
-   `SIGCHLD` 处理函数里 `while (waitpid(-1, NULL, WNOHANG) > 0);`，把退出的子进程全部回收。
-4. **fork 之后为什么两边都要 `close`？**
-   描述符表被复制了两份，两个进程都持有同一个连接的引用。父进程 `close(cfd)` 只是减引用计数，连接仍由子进程持有；子进程则要关掉继承来的监听套接字和其它会话的通道，否则端口和连接都释放不掉。
-5. **为什么子进程用 `_exit()`？**
-   不执行 `atexit`、不刷新父进程留下的 stdio 缓冲区，避免输出重复。
-6. **TCP 是字节流，怎么保证一条消息完整？**
-   自定义帧：3 字节帧头（类型 + 2 字节长度）+ 负载；`read_full` 循环读满，处理 EINTR 和短读。
-7. **客户端发一半就断线怎么办？**
-   子进程 `read` 返回 0（EOF），向主进程发 `QUIT`，主进程清理槽位并广播"离开"，子进程退出后被回收。
-8. **最多支持多少连接？**
-   代码里 `CHAT_MAX_CLIENTS = 64`；实际还受 `ulimit -n` 限制，可以用 `ulimit -n` 查看。
-9. **能不能改成 epoll / 线程池？**
-   可以，架构不变：把 `fork` 换成 `pthread_create`、把 `select` 换成 `epoll`，`socketpair` 换成共享内存或消息队列。PPT 第 18 页就是这个对比。
-
----
-
-## 六、已验证的内容
+## 五、已验证的内容
 
 - 源码用 `gcc -Wall -Wextra -O2 -std=gnu99` 编译，**零警告**；
 - `scripts/smoke_test.py` **12/12 通过**（登录/查重/广播/私聊隔离/在线列表/非法昵称/退出通知/退出后仍可接入）；
@@ -282,13 +252,3 @@ python3 scripts/demo.py      # 覆盖 chat/docs/demo_transcript.txt 与 ps_tree.
 > 代码在 Windows 上的 Cygwin（gcc 4.5.3）环境中编译并运行验证过；Linux 下 `make` 即可，源码不需要改动。
 
 ---
-
-## 七、重新生成 PPT
-
-改了讲稿或重新录了演示数据后：
-
-```sh
-python tools/build_deck.py
-```
-
-脚本会读取 `文化风PPT模板.pptx` 的封面/目录/章节页/结束页样式与 `chat/docs` 下的真实数据，重新生成 `多进程并发聊天程序_演示.pptx`（需要 `python-pptx`）。
